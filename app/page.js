@@ -24,7 +24,7 @@ export default function Page() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = new Error(data.error || "Kuch gadbad hui");
+        const err = new Error(data.error || "Something went wrong");
         err.field = data.field;
         throw err;
       }
@@ -126,7 +126,7 @@ export default function Page() {
     return (
       <main className="login">
         <h1>Subdomain Manager</h1>
-        <p className="mid" style={{ margin: "6px 0 0" }}>Apne domain ke subdomains, ek jagah.</p>
+        <p className="mid" style={{ margin: "6px 0 0" }}>Manage the subdomains of your domain in one place.</p>
         <form className="card" onSubmit={login}>
           <div className="field">
             <label htmlFor="pw">Password</label>
@@ -242,7 +242,7 @@ export default function Page() {
           )}
         </div>
         <p className="hint">
-          Vercel par site chalani ho to isi subdomain ko project ke Settings, Domains me bhi add karo.
+          To serve a site on Vercel, also add this subdomain under your project's Settings, Domains.
         </p>
       </form>
 
@@ -270,11 +270,11 @@ export default function Page() {
 
         {shown.length === 0 ? (
           <div className="empty">
-            <h2>{query ? "Kuch nahi mila" : "Abhi koi subdomain nahi"}</h2>
+            <h2>{query ? "No matches" : "No subdomains yet"}</h2>
             <p>
               {query
-                ? "Doosra naam ya value try karo."
-                : "Upar form se pehla subdomain banao. Ban jaane par yahan dikhega."}
+                ? "Try a different name or value."
+                : "Create your first subdomain with the form above. It will appear here."}
             </p>
             {!query && (
               <button className="btn primary" onClick={() => nameRef.current?.focus()}>
@@ -318,7 +318,7 @@ export default function Page() {
 
         {records.length > 0 && (
           <p className="summary">
-            Protected records (Resend, Brevo, website) yahan se delete nahi hote, taaki email ya site na tute.
+            Protected records (Resend, Brevo, your website) cannot be deleted here, so your email and site stay safe.
           </p>
         )}
       </section>

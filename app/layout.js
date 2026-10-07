@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Subdomain Manager",
-  description: "Apne domain ke subdomains banao aur manage karo",
+  description: "Create and manage subdomains of your own domain",
 };
 
 export const viewport = {
@@ -16,7 +16,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="hi">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

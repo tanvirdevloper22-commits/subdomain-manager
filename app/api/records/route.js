@@ -6,11 +6,11 @@ import { validateInput } from "../../../lib/validate";
 export const dynamic = "force-dynamic";
 
 function unauthorized() {
-  return NextResponse.json({ error: "Password galat hai" }, { status: 401 });
+  return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
 }
 
 function fail(e) {
-  return NextResponse.json({ error: e.message || "Kuch gadbad hui" }, { status: e.status && e.status < 500 ? e.status : 500 });
+  return NextResponse.json({ error: e.message || "Something went wrong" }, { status: e.status && e.status < 500 ? e.status : 500 });
 }
 
 export async function GET(request) {
@@ -46,12 +46,12 @@ export async function POST(request) {
     );
     if (clash) {
       return NextResponse.json(
-        { error: `'${v.name}' par pehle se ${clash.type} record hai. Pehle use delete karo.`, field: "name" },
+        { error: `'${v.name}' already has a ${clash.type} record. Delete it first.`, field: "name" },
         { status: 409 }
       );
     }
     if (v.type === "CNAME" && existing.some((r) => (r.name || "@") === v.name)) {
-      return NextResponse.json({ error: `'${v.name}' par already record hai, CNAME ke saath nahi chalega`, field: "name" }, { status: 409 });
+      return NextResponse.json({ error: `'${v.name}' already has a record, so a CNAME cannot be added there`, field: "name" }, { status: 409 });
     }
 
     const created = await createRecord(v);
@@ -66,13 +66,13 @@ export async function DELETE(request) {
   try {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: "id missing" }, { status: 400 });
-    // Safety: sirf wahi records delete honge jo is tool ne banaye
+    // Safety: only records created by this tool can be deleted
     const existing = await listRecords();
     const rec = existing.find((r) => r.id === id);
-    if (!rec) return NextResponse.json({ error: "Record nahi mila" }, { status: 404 });
+    if (!rec) return NextResponse.json({ error: "Record not found" }, { status: 404 });
     if (rec.comment !== MARK) {
       return NextResponse.json(
-        { error: "Ye record is tool ne nahi banaya (Resend/Brevo/website ka ho sakta hai). Vercel dashboard se hi delete karo." },
+        { error: "This record was not created by this tool (it may belong to Resend, Brevo or your website). Delete it from the Vercel dashboard instead." },
         { status: 403 }
       );
     }

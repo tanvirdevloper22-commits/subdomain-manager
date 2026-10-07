@@ -1,41 +1,43 @@
 # Subdomain Manager
 
-Apne domain (jiska DNS Vercel par hai) ke subdomains form se banao aur delete karo.
-Vercel DNS API use hoti hai, koi database nahi chahiye, free hai.
+Create and delete subdomains of your own domain from a simple web form.
+It uses the Vercel DNS API, needs no database, and is free to run.
 
-## Setup (10 minute)
+## Setup (about 10 minutes)
 
-1. **Vercel token banao**: vercel.com -> Settings -> Tokens -> Create (scope: aapka account/team).
-2. Ye folder GitHub par push karo, Vercel me **Add New -> Project** se import karo.
-3. Vercel project me **Settings -> Environment Variables** me ye daalo:
-   - `VERCEL_TOKEN` = token
-   - `DOMAIN` = abcde.com (apna asli domain)
-   - `ADMIN_PASSWORD` = lamba random password
-   - `VERCEL_TEAM_ID` = sirf agar domain team ke andar hai
-4. Deploy karo. Fir is tool ko ek subdomain par lagao, jaise `admin.abcde.com`
+1. **Create a Vercel token:** vercel.com -> Settings -> Tokens -> Create Token
+   (pick the account or team that owns the domain).
+2. Push this folder to a new GitHub repository and import it in Vercel
+   (**Add New -> Project**).
+3. In the project's **Settings -> Environment Variables**, add:
+   - `VERCEL_TOKEN`: the token from step 1
+   - `DOMAIN`: your domain, e.g. `example.com` (its DNS must be on Vercel)
+   - `ADMIN_PASSWORD`: a long, random password
+   - `VERCEL_TEAM_ID`: only if the domain belongs to a Vercel team
+4. Deploy, then give the tool its own address, e.g. `admin.example.com`
    (Project -> Settings -> Domains).
-5. Open karo, password daalo, subdomain banao.
+5. Open it, sign in with `ADMIN_PASSWORD`, and create subdomains.
 
-Local chalane ke liye: `.env.example` ko `.env.local` naam se copy karke bharo, fir
+To run it locally: copy `.env.example` to `.env.local`, fill it in, then run
 `npm install && npm run dev`.
 
-## Kaise kaam karta hai
+## How it works
 
-- **Subdomain banana**: naam + type (A / AAAA / CNAME / TXT) + value daalo. Record Vercel DNS me ban jaata hai.
-- **Vercel par site chalani ho**: preset "Vercel project" use karo, fir us project ke
-  Settings -> Domains me wahi subdomain add karo.
-- **Safety**:
-  - Sirf wahi records delete ho sakte hain jo is tool ne banaye (comment marker se pehchaan).
-    Resend/Brevo/website ke records "protected" dikhte hain.
-  - Reserved names (`mail`, `send`, `www`, `smtp`, `resend`, `brevo`, etc.) block hain.
-    Aur chahiye to `EXTRA_RESERVED` me add karo.
-  - Same naam par duplicate A/AAAA/CNAME nahi banta.
+- **Creating a subdomain:** enter a name, a type (A / AAAA / CNAME / TXT) and a value.
+  The record is created in Vercel DNS.
+- **Serving a site on Vercel:** use the "Vercel project" quick fill, then add the same
+  subdomain under that project's Settings -> Domains.
+- **Safety:**
+  - Only records created by this tool can be deleted (they carry a marker comment).
+    Records from Resend, Brevo or your website show as "Protected".
+  - Reserved names (`mail`, `send`, `www`, `smtp`, `resend`, `brevo`, and more) are blocked.
+    Add your own with `EXTRA_RESERVED`.
+  - A duplicate A / AAAA / CNAME on the same name is rejected.
 
-## Dhyan
+## Notes
 
-- `ADMIN_PASSWORD` kisi ko mat do, aur `VERCEL_TOKEN` kabhi frontend/GitHub me mat daalo.
-- Ye tool sirf aapke liye hai. Public users ko dene ke liye login (Google/GitHub), per-user limit
-  aur database alag se banana padega.
-- Wildcard (`*`) ek record se saare subdomains ek app par bhej deta hai, lekin ye tool usse
-  jaan-boojh kar block karta hai taaki galti se sab kuch na ghum jaaye. Chaaho to Vercel
-  dashboard se khud daal lo.
+- Keep `ADMIN_PASSWORD` private, and never put `VERCEL_TOKEN` in the frontend or in GitHub.
+- This tool is for your own use. Offering free subdomains to the public would need user
+  sign-in, per-user limits and a database on top of this.
+- Wildcard (`*`) records are intentionally blocked so one mistake cannot route everything
+  to a single app. Add one from the Vercel dashboard if you really want it.
