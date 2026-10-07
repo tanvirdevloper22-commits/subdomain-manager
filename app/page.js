@@ -1,40 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-
-const css = `
-:root{--bg:#f6f7f9;--card:#fff;--text:#14171c;--muted:#5f6b7a;--line:#e3e7ec;--accent:#4f46e5;--accent-text:#fff;--danger:#c0392b;--ok:#1a7f4b}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a20;--text:#eef1f5;--muted:#9aa5b4;--line:#2a2f38;--accent:#7c78ff;--accent-text:#0f1115;--danger:#ff7a6b;--ok:#4cd08a}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-.wrap{max-width:860px;margin:0 auto;padding:24px 16px 64px}
-h1{font-size:22px;margin:0 0 4px}
-.sub{color:var(--muted);margin:0 0 20px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
-label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
-input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
-input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0}
-.row{display:grid;gap:12px;grid-template-columns:1.2fr .8fr 1.6fr}
-@media (max-width:640px){.row{grid-template-columns:1fr}}
-.name-box{display:flex;align-items:center;gap:6px}
-.suffix{color:var(--muted);white-space:nowrap}
-button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:9px 14px}
-button.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}
-button.danger{color:var(--danger)}
-button:disabled{opacity:.5;cursor:default}
-.actions{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.msg{font-size:14px}.msg.err{color:var(--danger)}.msg.ok{color:var(--ok)}
-.presets{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
-.presets button{font-size:13px;padding:6px 10px}
-table{width:100%;border-collapse:collapse}
-th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
-th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-td.val{word-break:break-all;max-width:320px}
-.tag{font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
-.tag.mine{color:var(--accent);border-color:var(--accent)}
-.hint{color:var(--muted);font-size:13px;margin-top:10px}
-.tablewrap{overflow-x:auto}
-`;
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 
 export default function Page() {
   const [password, setPassword] = useState("");
@@ -43,7 +9,11 @@ export default function Page() {
   const [records, setRecords] = useState([]);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState("mine");
+  const [query, setQuery] = useState("");
+  const [confirmId, setConfirmId] = useState(null);
   const [form, setForm] = useState({ name: "", type: "CNAME", value: "cname.vercel-dns.com" });
+  const nameRef = useRef(null);
 
   const api = useCallback(
     async (method, body, pw) => {
@@ -53,7 +23,11 @@ export default function Page() {
         body: body ? JSON.stringify(body) : undefined,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Error");
+      if (!res.ok) {
+        const err = new Error(data.error || "Kuch gadbad hui");
+        err.field = data.field;
+        throw err;
+      }
       return data;
     },
     [password]
@@ -79,6 +53,13 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // "Saved" confirmation fades away by itself
+  useEffect(() => {
+    if (msg?.t !== "ok") return;
+    const t = setTimeout(() => setMsg(null), 3500);
+    return () => clearTimeout(t);
+  }, [msg]);
+
   async function login(e) {
     e.preventDefault();
     setMsg(null);
@@ -93,28 +74,38 @@ export default function Page() {
     setBusy(false);
   }
 
+  function logout() {
+    sessionStorage.removeItem("sm_pw");
+    setAuthed(false);
+    setPassword("");
+    setRecords([]);
+    setMsg(null);
+  }
+
   async function add(e) {
     e.preventDefault();
     setMsg(null);
     setBusy(true);
     try {
       const r = await api("POST", form);
-      setMsg({ t: "ok", s: `Ban gaya: ${r.fqdn}` });
-      setForm({ ...form, name: "" });
+      setMsg({ t: "ok", s: `Saved: ${r.fqdn}` });
+      setForm((f) => ({ ...f, name: "" }));
+      setTab("mine");
       await load();
+      nameRef.current?.focus();
     } catch (err) {
-      setMsg({ t: "err", s: err.message });
+      setMsg({ t: "err", s: err.message, field: err.field });
     }
     setBusy(false);
   }
 
   async function remove(rec) {
-    if (!confirm(`${rec.name}.${domain} delete karna hai?`)) return;
     setMsg(null);
     setBusy(true);
     try {
       await api("DELETE", { id: rec.id });
-      setMsg({ t: "ok", s: "Delete ho gaya" });
+      setConfirmId(null);
+      setMsg({ t: "ok", s: "Deleted" });
       await load();
     } catch (err) {
       setMsg({ t: "err", s: err.message });
@@ -122,114 +113,215 @@ export default function Page() {
     setBusy(false);
   }
 
-  function preset(type, value) {
-    setForm((f) => ({ ...f, type, value }));
-  }
+  const mineCount = useMemo(() => records.filter((r) => r.managed).length, [records]);
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return records
+      .filter((r) => (tab === "mine" ? r.managed : true))
+      .filter((r) => !q || r.name.toLowerCase().includes(q) || String(r.value).toLowerCase().includes(q));
+  }, [records, tab, query]);
 
   if (!authed) {
     return (
-      <div className="wrap">
-        <style>{css}</style>
+      <main className="login">
         <h1>Subdomain Manager</h1>
-        <p className="sub">Login karo</p>
+        <p className="mid" style={{ margin: "6px 0 0" }}>Apne domain ke subdomains, ek jagah.</p>
         <form className="card" onSubmit={login}>
-          <label>Admin password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
-          <div className="actions">
-            <button className="primary" disabled={busy || !password}>Login</button>
-            {msg && <span className={`msg ${msg.t}`}>{msg.s}</span>}
+          <div className="field">
+            <label htmlFor="pw">Password</label>
+            <input
+              id="pw"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={msg?.t === "err"}
+              autoFocus
+              autoComplete="current-password"
+            />
           </div>
+          <button className="btn primary lg" disabled={busy || !password}>
+            {busy ? "Checking..." : "Sign in"}
+          </button>
+          {msg?.t === "err" && (
+            <div className="msg err" role="alert">
+              <span className="dot bad" />
+              {msg.s}
+            </div>
+          )}
         </form>
-      </div>
+        <p className="credit">Subdomain Manager · private tool</p>
+      </main>
     );
   }
 
+  const isErr = msg?.t === "err";
+  const badName = isErr && msg.field === "name";
+  const badValue = isErr && msg.field === "value";
+
   return (
-    <div className="wrap">
-      <style>{css}</style>
-      <h1>Subdomain Manager</h1>
-      <p className="sub">{domain} ke subdomains</p>
+    <main className="wrap">
+      <header className="head">
+        <div>
+          <h1>Subdomains</h1>
+          <p className="mid">{domain}</p>
+        </div>
+        <button className="btn" onClick={logout}>Sign out</button>
+      </header>
 
       <form className="card" onSubmit={add}>
-        <div className="presets">
-          <button type="button" onClick={() => preset("CNAME", "cname.vercel-dns.com")}>Vercel project</button>
-          <button type="button" onClick={() => preset("A", "76.76.21.21")}>Vercel (A record)</button>
-          <button type="button" onClick={() => preset("CNAME", "")}>Doosri site (CNAME)</button>
-          <button type="button" onClick={() => preset("A", "")}>Server IP (A)</button>
+        <div className="chips">
+          <span className="label">Quick fill</span>
+          <button type="button" className="btn" onClick={() => setForm((f) => ({ ...f, type: "CNAME", value: "cname.vercel-dns.com" }))}>
+            Vercel project
+          </button>
+          <button type="button" className="btn" onClick={() => setForm((f) => ({ ...f, type: "A", value: "76.76.21.21" }))}>
+            Vercel (A record)
+          </button>
+          <button type="button" className="btn" onClick={() => setForm((f) => ({ ...f, type: "CNAME", value: "" }))}>
+            Other site
+          </button>
+          <button type="button" className="btn" onClick={() => setForm((f) => ({ ...f, type: "A", value: "" }))}>
+            Server IP
+          </button>
         </div>
-        <div className="row">
-          <div>
-            <label>Subdomain</label>
-            <div className="name-box">
+
+        <div className="fields">
+          <div className="field">
+            <label htmlFor="name">Subdomain</label>
+            <div className="suffix-box">
               <input
+                id="name"
+                ref={nameRef}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="blog"
                 autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-invalid={badName}
                 required
               />
               <span className="suffix">.{domain}</span>
             </div>
           </div>
-          <div>
-            <label>Type</label>
-            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+          <div className="field">
+            <label htmlFor="type">Type</label>
+            <select id="type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
               <option>A</option>
               <option>AAAA</option>
               <option>CNAME</option>
               <option>TXT</option>
             </select>
           </div>
-          <div>
-            <label>Value</label>
+          <div className="field">
+            <label htmlFor="value">Value</label>
             <input
+              id="value"
               value={form.value}
               onChange={(e) => setForm({ ...form, value: e.target.value })}
               placeholder={form.type === "A" ? "1.2.3.4" : "target.example.com"}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-invalid={badValue}
               required
             />
           </div>
         </div>
-        <div className="actions">
-          <button className="primary" disabled={busy}>Subdomain banao</button>
-          {msg && <span className={`msg ${msg.t}`}>{msg.s}</span>}
+
+        <div className="form-foot">
+          <button className="btn primary lg" disabled={busy}>
+            {busy ? "Saving..." : "Create subdomain"}
+          </button>
+          {msg && (
+            <span className={`msg ${msg.t}`} role={isErr ? "alert" : "status"}>
+              <span className={`dot ${isErr ? "bad" : "ok"}`} />
+              {msg.s}
+            </span>
+          )}
         </div>
         <p className="hint">
-          Vercel par site chalane ke liye subdomain ko project me bhi add karo: Project → Settings → Domains.
+          Vercel par site chalani ho to isi subdomain ko project ke Settings, Domains me bhi add karo.
         </p>
       </form>
 
-      <div className="card">
-        <div className="tablewrap">
-          <table>
-            <thead>
-              <tr><th>Name</th><th>Type</th><th>Value</th><th></th></tr>
-            </thead>
-            <tbody>
-              {records.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.name}{" "}{r.managed && <span className="tag mine">tool</span>}</td>
-                  <td>{r.type}</td>
-                  <td className="val">{r.value}</td>
-                  <td>
-                    {r.managed ? (
-                      <button className="danger" disabled={busy} onClick={() => remove(r)}>Delete</button>
-                    ) : (
-                      <span className="tag">protected</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {records.length === 0 && (
-                <tr><td colSpan="4" style={{ color: "var(--muted)" }}>Koi record nahi</td></tr>
-              )}
-            </tbody>
-          </table>
+      <section className="list-head" aria-label="Records">
+        <div className="tabs" role="tablist">
+          <button className="tab" role="tab" aria-selected={tab === "mine"} onClick={() => setTab("mine")}>
+            Created here<span className="count">{mineCount}</span>
+          </button>
+          <button className="tab" role="tab" aria-selected={tab === "all"} onClick={() => setTab("all")}>
+            All records<span className="count">{records.length}</span>
+          </button>
         </div>
-        <p className="hint">
-          "protected" records (Resend, Brevo, website) yahan se delete nahi hote, taaki galti se email ya site na tute.
-        </p>
-      </div>
-    </div>
+
+        {records.length > 6 && (
+          <div className="search">
+            <input
+              type="search"
+              placeholder="Search by name or value"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search records"
+            />
+          </div>
+        )}
+
+        {shown.length === 0 ? (
+          <div className="empty">
+            <h2>{query ? "Kuch nahi mila" : "Abhi koi subdomain nahi"}</h2>
+            <p>
+              {query
+                ? "Doosra naam ya value try karo."
+                : "Upar form se pehla subdomain banao. Ban jaane par yahan dikhega."}
+            </p>
+            {!query && (
+              <button className="btn primary" onClick={() => nameRef.current?.focus()}>
+                Create first subdomain
+              </button>
+            )}
+          </div>
+        ) : (
+          <div role="list" className={tab === "all" ? "list has-status" : "list"}>
+            {shown.map((r) => (
+              <div className="row" role="listitem" key={r.id}>
+                <div className="r-name">
+                  {r.name}
+                  <span className="base">.{domain}</span>
+                </div>
+                <div className="r-val">
+                  <span className="t-inline">{r.type}</span>
+                  {r.value}
+                </div>
+                {tab === "all" && (
+                  <div className="r-status">
+                    <span className={`dot ${r.managed ? "accent" : ""}`} />
+                    {r.managed ? "Created here" : "Protected"}
+                  </div>
+                )}
+                <div className="r-act">
+                  {r.managed &&
+                    (confirmId === r.id ? (
+                      <>
+                        <button className="btn" disabled={busy} onClick={() => setConfirmId(null)}>Cancel</button>
+                        <button className="btn danger solid" disabled={busy} onClick={() => remove(r)}>Delete</button>
+                      </>
+                    ) : (
+                      <button className="btn danger" disabled={busy} onClick={() => setConfirmId(r.id)}>Delete</button>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {records.length > 0 && (
+          <p className="summary">
+            Protected records (Resend, Brevo, website) yahan se delete nahi hote, taaki email ya site na tute.
+          </p>
+        )}
+      </section>
+    </main>
   );
 }

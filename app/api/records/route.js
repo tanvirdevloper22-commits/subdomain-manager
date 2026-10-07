@@ -38,7 +38,7 @@ export async function POST(request) {
   try {
     const input = await request.json();
     const v = validateInput(input);
-    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
+    if (!v.ok) return NextResponse.json({ error: v.error, field: v.field }, { status: 400 });
 
     const existing = await listRecords();
     const clash = existing.find(
@@ -46,12 +46,12 @@ export async function POST(request) {
     );
     if (clash) {
       return NextResponse.json(
-        { error: `'${v.name}' par pehle se ${clash.type} record hai. Pehle use delete karo.` },
+        { error: `'${v.name}' par pehle se ${clash.type} record hai. Pehle use delete karo.`, field: "name" },
         { status: 409 }
       );
     }
     if (v.type === "CNAME" && existing.some((r) => (r.name || "@") === v.name)) {
-      return NextResponse.json({ error: `'${v.name}' par already record hai, CNAME ke saath nahi chalega` }, { status: 409 });
+      return NextResponse.json({ error: `'${v.name}' par already record hai, CNAME ke saath nahi chalega`, field: "name" }, { status: 409 });
     }
 
     const created = await createRecord(v);
