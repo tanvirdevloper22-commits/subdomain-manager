@@ -157,6 +157,7 @@ export default function Page() {
 
   const isErr = msg?.t === "err";
   const badName = isErr && msg.field === "name";
+  const badType = isErr && msg.field === "type";
   const badValue = isErr && msg.field === "value";
 
   return (
@@ -184,6 +185,9 @@ export default function Page() {
           <button type="button" className="btn" onClick={() => setForm((f) => ({ ...f, type: "A", value: "" }))}>
             Server IP
           </button>
+          <button type="button" className="btn" onClick={() => setForm({ name: "_vercel", type: "TXT", value: "" })}>
+            Vercel domain verification
+          </button>
         </div>
 
         <div className="fields">
@@ -207,7 +211,7 @@ export default function Page() {
           </div>
           <div className="field">
             <label htmlFor="type">Type</label>
-            <select id="type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+            <select id="type" value={form.type} aria-invalid={badType} onChange={(e) => setForm({ ...form, type: e.target.value })}>
               <option>A</option>
               <option>AAAA</option>
               <option>CNAME</option>
@@ -220,7 +224,13 @@ export default function Page() {
               id="value"
               value={form.value}
               onChange={(e) => setForm({ ...form, value: e.target.value })}
-              placeholder={form.type === "A" ? "1.2.3.4" : "target.example.com"}
+              placeholder={
+                form.type === "A"
+                  ? "1.2.3.4"
+                  : form.type === "TXT"
+                  ? "Paste the value Vercel shows, e.g. vc-domain-verify=..."
+                  : "target.example.com"
+              }
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
@@ -243,6 +253,7 @@ export default function Page() {
         </div>
         <p className="hint">
           To serve a site on Vercel, also add this subdomain under your project's Settings, Domains.
+          If Vercel asks you to verify ownership of the domain, use "Vercel domain verification" and paste the TXT value it shows.
         </p>
       </form>
 

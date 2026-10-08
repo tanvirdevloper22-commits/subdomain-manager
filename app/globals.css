@@ -83,7 +83,7 @@ button { font: inherit; cursor: pointer; transition: background .15s, border-col
   transition: border-color .15s;
 }
 .field input::placeholder { color: var(--ink-3); }
-.field input[aria-invalid="true"] { border-color: var(--bad); }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"] { border-color: var(--bad); }
 .suffix-box {
   display: flex; align-items: center; height: 40px; padding-right: 12px;
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper);

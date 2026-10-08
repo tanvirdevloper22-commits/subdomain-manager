@@ -34,6 +34,15 @@ To run it locally: copy `.env.example` to `.env.local`, fill it in, then run
     Add your own with `EXTRA_RESERVED`.
   - A duplicate A / AAAA / CNAME on the same name is rejected.
 
+## If Vercel asks you to verify the domain
+
+When a project adds a domain that lives in another Vercel account, Vercel asks for a TXT record
+at `_vercel.yourdomain.com`. Click **Vercel domain verification** in this tool, paste the value
+Vercel shows (it starts with `vc-domain-verify=`), and create it. You can delete it afterwards.
+
+For this to work, `VERCEL_TOKEN` must belong to the account (or team) that owns the domain's DNS.
+The tool itself can be deployed from any account.
+
 ## Notes
 
 - Keep `ADMIN_PASSWORD` private, and never put `VERCEL_TOKEN` in the frontend or in GitHub.
